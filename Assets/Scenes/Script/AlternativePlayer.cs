@@ -4,58 +4,95 @@ using UnityEngine;
 
 public class AlternativePlayer : MonoBehaviour
 {
-    public float speed;
-
-    public float jumpForce;
-
-    public bool isGrounded;// Check if he's on the ground
-
-    public Rigidbody2D rb;// Physics
-
+    [Header("Movimento")]
+    public float walkSpeed = 5f;
+    public float runSpeed = 7f;
+    private float speed;              // Velocidade atual baseada em walk/run
     private float moveInput;
 
+    [Header("Pulo")]
+    public float jumpForce = 7f;
+    public bool isGrounded;
 
-    // Start is called before the first frame update
+    [Header("Componentes")]
+    public Rigidbody2D rb;
+
+    [Header("Detecção Layers")]
+    public LayerMask groundLayer;     // Layer do chão
+    public LayerMask wallLayer;       // Layer das paredes
+    private bool isTouchingWall = false;
+
     void Start()
     {
-        // Just make sure he will take this component
         rb = GetComponent<Rigidbody2D>();
+        speed = walkSpeed; // Inicializa com velocidade de caminhada
     }
 
-    // Update is called once per frame
     void Update()
     {
+        // Captura input horizontal
         moveInput = Input.GetAxis("Horizontal");
-    }
 
-    private void FixedUpdate()
-    {
-        rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
-
-        if (Input.GetKey(KeyCode.Space) && isGrounded)
-        {
-            rb.AddForce(new Vector2(0f, jumpForce), ForceMode2D.Impulse);
-
-            isGrounded = false;
-
-        }
-
+        // Corrida com Shift
         if (Input.GetKey(KeyCode.LeftShift))
         {
-            speed = 7;
+            speed = runSpeed;
         }
         else
         {
-            speed = 5;
+            speed = walkSpeed;
+        }
+
+        // Pulo
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        {
+            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            isGrounded = false;
         }
     }
 
-    private void OnCollisionEnter2D(Collision2D collision)
+    void FixedUpdate()
     {
-        if(collision.gameObject.layer == 6)
+        // Calcula velocidade horizontal
+        float targetVelocityX = moveInput * speed;
+
+        // Se estiver no ar e encostando na parede, reduz apenas levemente a velocidade
+        if (!isGrounded && isTouchingWall)
+        {
+            targetVelocityX *= 0.7f; // Ajuste o valor entre 0 e 1 para suavidade
+        }
+
+        // Aplica velocity horizontal mantendo a gravidade no Y
+        rb.velocity = new Vector2(targetVelocityX, rb.velocity.y);
+    }
+
+    private void OnCollisionStay2D(Collision2D collision)
+    {
+        // Detecta chão
+        if (((1 << collision.gameObject.layer) & groundLayer) != 0)
         {
             isGrounded = true;
-            
+        }
+
+        // Detecta parede lateral
+        if (((1 << collision.gameObject.layer) & wallLayer) != 0)
+        {
+            isTouchingWall = true;
+        }
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        // Sai do chão
+        if (((1 << collision.gameObject.layer) & groundLayer) != 0)
+        {
+            isGrounded = false;
+        }
+
+        // Sai da parede
+        if (((1 << collision.gameObject.layer) & wallLayer) != 0)
+        {
+            isTouchingWall = false;
         }
     }
 }
