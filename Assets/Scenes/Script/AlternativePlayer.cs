@@ -55,6 +55,7 @@ public class AlternativePlayer : MonoBehaviour
         if(collision.gameObject.layer == 6)
         {
             isGrounded = true;
+            
         }
     }
 }
